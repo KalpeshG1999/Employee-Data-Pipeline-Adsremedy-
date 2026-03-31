@@ -1,0 +1,48 @@
+services:
+
+  postgres:
+    image: postgres:13
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: employees_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  spark:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark_container
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./:/home/jovyan/work
+
+  airflow:
+    image: apache/airflow:2.8.1
+    container_name: airflow
+    restart: always
+    depends_on:
+      - postgres
+      - spark
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./:/home/jovyan/work
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname Kalpesh --lastname Gadhari --role Admin --email admin@example.com || true &&
+      airflow webserver --port 8080 & 
+      airflow scheduler
+      "
+
+volumes:
+  postgres_data:
